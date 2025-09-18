@@ -364,15 +364,54 @@ function showMenu(): void
                 $privateKey = escapeshellarg($credentials['privateKey']);
                 $rpcUrl = 'https://sepolia.drpc.org'; // RPC_URL otomatis
                 
-                $fileName = readline("Masukkan nama file yang ingin diunggah (misalnya: myimage.jpg): ");
-                $fileName = escapeshellarg($fileName);
-                $tagFileName = readline("Masukkan nama tag file (tanpa spasi): ");
-                $tagFileName = escapeshellarg($tagFileName);
-                $fileFormat = readline("Masukkan format file (misalnya: JPG atau PNG): ");
-                $fileFormat = escapeshellarg($fileFormat);
+                // Cari folder hasil unduhan
+                $downloadFolders = glob('Images*', GLOB_ONLYDIR);
+                if (empty($downloadFolders)) {
+                    echo "Tidak ada folder hasil unduhan yang terdeteksi. Silakan unduh gambar terlebih dahulu.\n";
+                    readline("Tekan Enter untuk kembali ke menu...");
+                    break;
+                }
                 
+                echo "Pilih folder yang berisi gambar yang ingin Anda unggah:\n";
+                foreach ($downloadFolders as $index => $folder) {
+                    echo ($index + 1) . ". $folder\n";
+                }
+                $folderChoice = readline("Masukkan nomor folder: ");
+                $chosenFolder = $downloadFolders[$folderChoice - 1] ?? null;
+
+                if (!$chosenFolder) {
+                    echo "Pilihan tidak valid.\n";
+                    readline("Tekan Enter untuk kembali ke menu...");
+                    break;
+                }
+
+                // Cari file di dalam folder yang dipilih
+                $filesInFolder = glob($chosenFolder . '/*.{jpg,jpeg,png}', GLOB_BRACE);
+                if (empty($filesInFolder)) {
+                    echo "Folder '$chosenFolder' tidak berisi gambar JPG atau PNG.\n";
+                    readline("Tekan Enter untuk kembali ke menu...");
+                    break;
+                }
+
+                echo "Pilih gambar yang ingin Anda unggah dari '$chosenFolder':\n";
+                foreach ($filesInFolder as $index => $file) {
+                    echo ($index + 1) . ". " . basename($file) . "\n";
+                }
+                $fileChoice = readline("Masukkan nomor gambar: ");
+                $chosenFile = $filesInFolder[$fileChoice - 1] ?? null;
+
+                if (!$chosenFile) {
+                    echo "Pilihan tidak valid.\n";
+                    readline("Tekan Enter untuk kembali ke menu...");
+                    break;
+                }
+
+                $fileName = escapeshellarg($chosenFile);
+                $tagFileName = escapeshellarg(basename($chosenFile, '.' . pathinfo($chosenFile, PATHINFO_EXTENSION)));
+                $fileFormat = escapeshellarg(pathinfo($chosenFile, PATHINFO_EXTENSION));
+
                 echo "Memulai proses pengunggahan...\n";
-                $command = "irys upload $fileName -n devnet -t ethereum -w $privateKey --tags $tagFileName $fileFormat --provider-url $rpcUrl";
+                $command = "irys upload $fileName -n devnet -t ethereum -w $privateKey --tags $tagFileName $fileFormat --provider-url $rpcUrl --no-confirmation";
                 $output = executeCommand($command);
                 
                 // Cari TX Hash atau URL di output
